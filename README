@@ -1,0 +1,23 @@
+
+Template syntax:
+
+Place javascript code between <% ... %> to evaluate it.
+Inside the javascript code use emit() to write to the template.
+
+Place javascript code between <%= ... %> to immediately write the result to
+the template.
+
+Enable things like:
+
+
+<% for(var i=0; i<supplies.length; i++) { %>
+    <li>
+        <a href='supplies/<%= supplies[i] %>'>
+            <%= supplies[i] %>
+        </a>
+    </li>
+<% } %>
+
+
+strategy: read file line-by-line, generate javascript code, consisting of
+emitln() calls.
