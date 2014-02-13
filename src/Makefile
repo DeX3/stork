@@ -9,6 +9,7 @@ all: stork
 
 stork: stork.o \
 	   template.o \
+	   params_store.o \
 	   utils.o
 	$(CXX) $(LDOPTIONS) -o $@ $^
 

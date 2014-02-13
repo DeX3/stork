@@ -1,0 +1,8 @@
+#include "<%= params.name %>.h"
+
+using namespace caiman::<%= params.name %>;
+
+int main( void ) {
+
+    return 0;
+}

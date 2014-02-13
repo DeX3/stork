@@ -2,10 +2,16 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <memory>
+#include <iostream>
 
 #include <v8.h>
 
+#include "params_store.h"
+
 namespace stork {
+
+    class Template;
 
     class FileTemplate {
         
@@ -20,7 +26,7 @@ namespace stork {
 
         void instantiate(
                         const std::string& path,
-                        const std::map<std::string, std::string>& params );
+                        ParamsStore *params );
 
         std::string path() const {
             return this->path_;
@@ -40,7 +46,6 @@ namespace stork {
         static v8::Handle<v8::Value> emit_wrapper( const v8::Arguments& args );
         v8::Handle<v8::Value> emit( const v8::Arguments& args );
 
-
     };
 
     class Template {
@@ -49,11 +54,12 @@ namespace stork {
         Template( const std::string& path );
 
         void instantiate( const std::string name,
-                          const std::map<std::string, std::string>& params );
+                          ParamsStore *params );
+
+        std::string name();
 
     private:
         std::string path_;
         std::vector<FileTemplate> templates_;
-
     };
 }

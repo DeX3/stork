@@ -26,6 +26,9 @@ void utils::walk( const std::string& path,
         std::string name = iter->path().string();
         fn( name );
     }
+
+    std::cout << "walk done in utils" << std::endl;
+
 }
 
 std::string utils::read_file_contents( const std::string& filename ) {
@@ -53,6 +56,7 @@ void utils::replace( std::string& str,
     if( from.empty() ) {
         return;
     }
+
 
     size_t start_pos = 0;
     while( (start_pos = str.find(from, start_pos)) != std::string::npos ) {

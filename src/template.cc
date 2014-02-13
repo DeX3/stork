@@ -18,8 +18,15 @@ const char* to_c_str(const v8::String::Utf8Value& value);
 v8::Handle<v8::Value> emit_wrapper( const v8::Arguments& args );
 void report_exception( v8::Isolate* isolate, v8::TryCatch* try_catch );
 
+static v8::Handle<v8::Value> map_get( v8::Local<v8::String> name,
+                                const v8::AccessorInfo& info);
+static v8::Handle<v8::Value> map_set( v8::Local<v8::String> name,
+                              v8::Local<v8::Value> value,
+                              const v8::AccessorInfo& info );
+
 void escape( std::string& str ) {
 
+    utils::replace( str, "\\", "\\\\" );
     utils::replace( str, "\n", "\\n" );
     utils::replace( str, "\r", "\\r" );
     utils::replace( str, "\t", "\\t" );
@@ -39,7 +46,6 @@ FileTemplate FileTemplate::parse( const std::string& template_file ) {
 
         std::string fragment = contents.substr( last, start - last );
         escape( fragment );
-
         ss << "emit( \'" << fragment << "\' );\n";
 
         bool direct = contents[start+2] == '=';
@@ -53,34 +59,37 @@ FileTemplate FileTemplate::parse( const std::string& template_file ) {
             ss << "emit( " <<
                   utils::trim( fragment ) <<
                   " );\n";
+
+            end += 1;
         }else {
             ss << utils::trim( fragment ) << "\n";
 
             //trim a trailing \n if the line ended with a %>
             if( contents[end + 2] == '\n' ) {
-                end += 3;
+                end += 2;
             }
         }
-        last = end + 2;
+        last = end + 1;
 
         start = contents.find( "<%", end );
     }
 
+    std::string appendix = contents.substr( last, start - last );
+    escape( appendix );
+    ss << "emit( \'" << appendix << "\' );\n";
+
     FileTemplate ret( template_file );
     ret.javascript_ = ss.str();
-
-    std::cout << "Created new file template " << ret.path_ << std::endl;
 
     return ret;
 }
 
-void FileTemplate::instantiate(
-                        const std::string& path,
-                        const std::map<std::string, std::string>& params ) {
+void FileTemplate::instantiate( const std::string& path,
+                                ParamsStore *params ) {
 
-    (void)params;
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
     v8::HandleScope handle_scope(isolate);
+
 
     v8::Handle<v8::String> script_source = v8::String::New( 
                                                     this->javascript_.c_str()
@@ -89,6 +98,7 @@ void FileTemplate::instantiate(
 
     // Create a template for the global object.
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
+
 
     v8::Handle<v8::FunctionTemplate> fn = v8::FunctionTemplate::New(
                                             emit_wrapper,
@@ -102,6 +112,17 @@ void FileTemplate::instantiate(
     v8::Handle<v8::Context> context = v8::Context::New(NULL, global);
     // Enter the newly created execution environment.
     v8::Context::Scope context_scope(context);
+
+    v8::Handle<v8::ObjectTemplate> params_object = v8::ObjectTemplate::New();
+    params_object->SetInternalFieldCount( 1 );
+    params_object->SetNamedPropertyHandler( map_get, map_set );
+
+    v8::Handle<v8::External> params_ptr = v8::External::New( params );
+
+    v8::Handle<v8::Object> inst = params_object->NewInstance();
+    inst->SetInternalField( 0, params_ptr );
+
+    context->Global()->Set( v8::String::New( "params" ), inst ); 
 
     bool report_exceptions = true;
 
@@ -128,12 +149,51 @@ void FileTemplate::instantiate(
             }
         }
 
+        std::string newpath( path );
+        utils::replace( newpath, ".dna", "" );
+
+        utils::replace( newpath,
+                        params->get( "template_name" ),
+                        params->get( "name" ) );
+
+        fs::path bp( newpath );
+        fs::create_directories( bp.parent_path() );
         std::ofstream of;
-        of.open( path );
+        of.open( newpath );
         of << this->out_.str();
         of.close();
     }
 
+}
+
+v8::Handle<v8::Value> map_get(
+        v8::Local<v8::String> name,
+        const v8::AccessorInfo& info) {
+
+    v8::String::Utf8Value utf8(name);
+    std::string namestr(*utf8);
+
+    v8::Handle<v8::External> field = v8::Handle<v8::External>::Cast(
+                                            info.Holder()->GetInternalField(0)
+                                                                   );
+    void* ptr = field->Value();
+    ParamsStore *params = static_cast<ParamsStore *>( ptr );
+
+    std::string value = params->get( namestr );
+
+    return v8::String::New( value.c_str() );
+}
+
+
+v8::Handle<v8::Value> map_set(
+        v8::Local<v8::String> name,
+        v8::Local<v8::Value> value_obj,
+        const v8::AccessorInfo& info ) {
+
+    (void) name;
+    (void) info;
+
+    return value_obj;
 }
 
 v8::Handle<v8::Value> FileTemplate::emit_wrapper( const v8::Arguments& args ) {
@@ -209,16 +269,25 @@ Template::Template( const std::string& path )
     utils::walk( path,
         [this]( const std::string& path ) {
 
-        FileTemplate tpl = FileTemplate::parse( path );
-        this->templates_.push_back( tpl );
+        if( fs::is_regular_file( path ) ) {
+            
+            FileTemplate tpl = FileTemplate::parse( path );
+            this->templates_.push_back( tpl );
+        }
     } );
+
+}
+
+std::string Template::name() {
+
+    fs::path path( path_ );
+
+    return path.stem().string();
 }
 
 void Template::instantiate(
         const std::string name,
-        const std::map<std::string, std::string>& params ) {
-
-    (void)params;
+        ParamsStore *params ) {
 
     fs::path project( name );
     fs::create_directory( project );
@@ -231,8 +300,6 @@ void Template::instantiate(
                                                      );
 
         std::string new_path = name + relative_path;
-
-        
         tpl.instantiate( new_path, params );
     }
 }

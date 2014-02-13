@@ -37,10 +37,6 @@ int main( int argc, char **argv ) {
         return 1;
     }
     
-
-
-
-
     return 0;
 }
 
@@ -73,10 +69,24 @@ int cmd_new( int argc, char **argv ) {
         
         std::cout << "Creating new " << template_name << std::endl;
 
-        Template tpl( TEMPLATE_LOCATION + template_name );
+        Template tpl( TEMPLATE_LOCATION + template_name + ".dna" );
+        std::cout << "Template created" << std::endl;
 
-        std::map<std::string, std::string> params;
-        tpl.instantiate( project_name, params );
+        auto read_param = []( const std::string& name ) {
+            std::cout << name << "> ";
+
+            std::string ret;
+            std::getline( std::cin, ret );
+
+            return ret;
+        };
+
+        ParamsStore params( read_param );
+        params.set( "name", project_name );
+        params.set( "template_name", template_name );
+
+
+        tpl.instantiate( project_name, &params );
         
     }else {
         std::cout << "No template given." << std::endl;

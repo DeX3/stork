@@ -1,0 +1,4 @@
+src/*.o
+src/<%= params.name %>
+test/*.o
+test/*_test

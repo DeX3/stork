@@ -1,0 +1,25 @@
+OUT=<%= params.name %>
+<% if( params.use_protobuf ) { %>
+PROTODIR=proto
+PROTOOPTIONS=-I$(PROTODIR) -I$(STAGING_DIR)/include
+<% } %>
+LDFLAGS+= <%= params.use_protobuf? "-lprotobuf \\" : "\\" %>
+		  <%= params.libraries %>
+
+OBJECTS=<%= params.name %>.o \
+		utils.o \
+		log.o
+
+$(OUT): $(OBJECTS)
+	$(CXX) $(LDFLAGS) -o $@ $^
+
+%.o: %.cc %.h
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
+
+<% if( params.use_protobuf ) { %>
+%.pb.cc: $(PROTODIR)/%.proto
+	$(PROTOC) $(PROTOOPTIONS) $^ --cpp_out=.
+<% } %>
+
+clean:
+	rm -rf *.o <%= params.use_protobuf? "*.pb.*" : "" %> <%= params.name %>
