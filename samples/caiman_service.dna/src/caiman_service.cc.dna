@@ -1,5 +1,8 @@
 #include "<%= params.name %>.h"
 
+#include "log.h"
+
+
 using namespace caiman::<%= params.name %>;
 
 int main( void ) {

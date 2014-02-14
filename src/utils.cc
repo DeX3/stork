@@ -27,8 +27,6 @@ void utils::walk( const std::string& path,
         fn( name );
     }
 
-    std::cout << "walk done in utils" << std::endl;
-
 }
 
 std::string utils::read_file_contents( const std::string& filename ) {

@@ -1,0 +1,14 @@
+<% var guard = "CAIMAN_" + params.name.toUpperCase() + "_UTILS_H_INCLUDED" %>
+#ifndef <%= guard %>
+#define <%= guard %>
+
+namespace caiman {
+    namespace <%= params.name %> {
+        namespace utils {
+
+        }
+    }
+
+}
+
+#endif /* <%= guard %> */
